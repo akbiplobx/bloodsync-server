@@ -58,7 +58,7 @@ async function run() {
    
     const db = client.db("bloodsync");
     
-    // 💡 আপনার ডাটাবেজের কালেকশনের সঠিক নাম 'blood-data' রাখা হলো
+  
     const bloodRequestsCollection = db.collection("blood-data");       
     const myDonationsCollection = db.collection("myDonations"); 
     const donationApplicationsCollection = db.collection("donationApplications");
@@ -75,7 +75,7 @@ async function run() {
         const { search, bloodGroup, urgency } = req.query;
         let query = {};
 
-        // ১. হাসপাতাল বা পেশেন্টের নাম দিয়ে সার্চ (যেহেতু আপনার স্কিমাতে 'location' ফিল্ড নেই, তাই এটি বাদ দেওয়া হয়েছে)
+        
         if (search && search.trim() !== "") {
           query.$or = [
             { hospitalName: { $regex: search, $options: 'i' } },
@@ -83,18 +83,18 @@ async function run() {
           ];
         }
 
-        // ২. ব্লাড গ্রুপ ফিল্টার ফিক্স (ফ্রন্টএন্ডের রিকোয়েস্ট হ্যান্ডেল করার জন্য)
+      
         if (bloodGroup && bloodGroup !== 'All Groups' && bloodGroup !== 'All' && bloodGroup.trim() !== "") {
           const groupArray = bloodGroup.split(',');
           query.bloodGroup = { $in: groupArray };
         }
 
-        // ৩. আরজেন্সি ফিল্টার (যদি আপনার ডেটাতে urgency ফিল্ড না থাকে, তবে অল সিলেক্টেড থাকলে সব ডেটা আসবে)
+        
         if (urgency && urgency !== 'all' && urgency.trim() !== "") {
           query.urgency = { $regex: `^${urgency}$`, $options: 'i' }; 
         }
 
-        // ডিফল্ট সর্টিং (নতুন রিকোয়েস্টগুলো আগে দেখাবে)
+        
         let sortOptions = { _id: -1 }; 
 
         const result = await bloodRequestsCollection.find(query).sort(sortOptions).toArray();
