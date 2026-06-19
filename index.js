@@ -296,3 +296,19 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 });
+// ================
+
+app.get('/donation-request/:id', verifyToken, async (req, res) => {
+  try {
+    const id = req.params.id;
+    
+    const request = await bloodRequestsCollection.findOne({ _id: new ObjectId(id) });
+    
+    if (!request) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+    res.json(request);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
