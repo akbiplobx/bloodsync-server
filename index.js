@@ -175,6 +175,19 @@ app.get('/my-requests', async (req, res) => {
 });
     
 
+app.delete('/blood-request/:id', verifyToken, async (req, res) => {
+    try {
+        const id = req.params.id;
+        const result = await bloodRequestsCollection.deleteOne({ _id: new ObjectId(id) });
+        if (result.deletedCount === 1) {
+            res.json({ message: "Successfully deleted" });
+        } else {
+            res.status(404).json({ message: "Request not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ message: "Error deleting", error: error.message });
+    }
+});
     
 
     
