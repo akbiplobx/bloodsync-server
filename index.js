@@ -140,22 +140,7 @@ app.get('/donation-request/:id', async (req, res) => {
     });
     
     // ================++++===============
-    // Donation application route
-app.post('/apply-donation', async (req, res) => {
-  try {
-    const applicationData = req.body;
-    
-    // donationApplicationsCollection এর সাথে কানেক্ট করতে হবে (আগে ডিফাইন করা হয়েছে)
-    const result = await donationApplicationsCollection.insertOne({
-      ...applicationData,
-      createdAt: new Date()
-    });
-    
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: "Error saving donation application", error: error.message });
-  }
-});
+
    
 
    
