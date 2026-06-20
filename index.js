@@ -120,7 +120,18 @@ async function run() {
   }
 });
 // ===========================
-
+// Add Blood Request Form Data
+    app.post('/create-request', verifyToken, async (req, res) => {
+      try {
+        const requestData = req.body;
+        console.log("Creating new blood request:", requestData);
+        const result = await bloodRequestsCollection.insertOne(requestData);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ message: "Error inserting blood request", error: error.message });
+      }
+    });
+    // ==============
    
 
    
