@@ -141,6 +141,23 @@ app.get('/donation-request/:id', async (req, res) => {
     
     // ================++++===============
 
+app.patch('/update-donation-status/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await donationApplicationsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: 'processing' } }
+    );
+
+    if (result.modifiedCount > 0) {
+      res.json({ success: true, message: "Status updated to processing" });
+    } else {
+      res.status(404).json({ message: "Application not found or no change made" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
    
 
    
