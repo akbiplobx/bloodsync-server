@@ -110,21 +110,18 @@ async function run() {
 // ===============================
 
 
-app.get('/donation-request/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    
-    
-    const request = await bloodRequestsCollection.findOne({ _id: new ObjectId(id) });
-    
-    if (!request) {
-      return res.status(404).json({ message: "Request not found" });
+
+app.get('/blood-request/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const request = await bloodRequestsCollection.findOne({ _id: new ObjectId(id) });
+        if (!request) {
+            return res.status(404).json({ message: "Request not found" });
+        }
+        res.json(request);
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
     }
-    
-    res.json(request);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
 });
 // ===========================
 // Add Blood Request Form Data
@@ -140,9 +137,42 @@ app.get('/donation-request/:id', async (req, res) => {
     });
     
     // ================++++===============
-
-
-   
+app.get('/donation-request/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        
+        const request = await bloodRequestsCollection.findOne({ _id: new ObjectId(id) });
+        
+        if (!request) {
+            return res.status(404).json({ message: "Request not found" });
+        }
+        res.json(request);
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+});
+  //  =================
+  app.post('/donate', async (req, res) => {
+ 
+    try {
+       
+        res.status(200).json({ success: true, message: "সফল হয়েছে!" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "এরর হয়েছে" });
+    }
+});
+// ===========
+app.get('/my-requests', async (req, res) => {
+    try {
+        const email = req.query.email;
+        
+        const result = await bloodRequestsCollection.find({ requesterEmail: email }).toArray();
+        console.log("Found requests:", result); // এটি টার্মিনালে চেক করুন
+        res.json(result);
+    } catch (error) {
+        res.status(500).send("Server Error");
+    }
+});
     
 
     
