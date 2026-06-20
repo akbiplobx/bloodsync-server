@@ -105,15 +105,22 @@ async function run() {
     });
 
   //  ===========================
-  app.get('/donation-request/:id', verifyToken, async (req, res) => {
+  // ===============================
+// 🩸 UPDATED BLOOD REQUEST ROUTE
+// ===============================
+
+
+app.get('/donation-request/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    
     
     const request = await bloodRequestsCollection.findOne({ _id: new ObjectId(id) });
     
     if (!request) {
       return res.status(404).json({ message: "Request not found" });
     }
+    
     res.json(request);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -131,7 +138,24 @@ async function run() {
         res.status(500).json({ message: "Error inserting blood request", error: error.message });
       }
     });
-    // ==============
+    
+    // ================++++===============
+    // Donation application route
+app.post('/apply-donation', async (req, res) => {
+  try {
+    const applicationData = req.body;
+    
+    // donationApplicationsCollection এর সাথে কানেক্ট করতে হবে (আগে ডিফাইন করা হয়েছে)
+    const result = await donationApplicationsCollection.insertOne({
+      ...applicationData,
+      createdAt: new Date()
+    });
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: "Error saving donation application", error: error.message });
+  }
+});
    
 
    
@@ -147,7 +171,7 @@ async function run() {
 
 
     
-    
+    // ================++++===============
 
   } catch (error) {
     console.error("Database error:", error);
