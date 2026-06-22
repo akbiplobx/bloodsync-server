@@ -121,3 +121,32 @@ app.patch('/update-user', verifyToken, async (req, res) => {
     }
 });
 
+// =============
+
+app.get('/donation-request/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await bloodRequestsCollection.findOne({ _id: new ObjectId(id) });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/donate', verifyToken, async (req, res) => {
+  try {
+    const donationData = req.body;
+    const db = client.db("bloodsync");
+    const donationsCollection = db.collection("donations"); // নতুন কালেকশন
+    const result = await donationsCollection.insertOne(donationData);
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+// ========
+
+
+
+
+
