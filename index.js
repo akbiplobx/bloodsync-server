@@ -13,7 +13,11 @@ const uri = process.env.MONGODB_URI;
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true
+}));
+
 app.use(express.json());
 
 const client = new MongoClient(uri, {
@@ -95,3 +99,25 @@ app.delete('/blood-request/:id', verifyToken, async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// ===============
+app.patch('/update-user', verifyToken, async (req, res) => {
+    try {
+        const { name, image, district, upazila, bloodGroup } = req.body;
+        const db = client.db("bloodsync");
+        const usersCollection = db.collection("user"); // আপনার ইউজার্স কালেকশন
+
+        const result = await usersCollection.updateOne(
+            { email: req.user.email }, // verifyToken থেকে পাওয়া ইমেইল
+            { $set: { name, image, district, upazila, bloodGroup } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ success: true, message: "Profile updated successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Update failed", error: error.message });
+    }
+});
+
