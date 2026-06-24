@@ -61,9 +61,32 @@ async function run() {
     });
 
     app.get('/blood-requests', async (req, res) => {
-      const result = await bloodRequestsCollection.find({}).toArray();
-      res.json(result);
-    });
+    try {
+        const { search, bloodGroup, urgency } = req.query;
+        let query = {};
+       
+        if (search) {
+            query.$or = [
+                { hospitalName: { $regex: search, $options: 'i' } },
+                { location: { $regex: search, $options: 'i' } }
+            ];
+        }
+      
+        if (bloodGroup && bloodGroup !== "All Groups") {
+            query.bloodGroup = bloodGroup;
+        }
+        
+        if (urgency && urgency !== "all") {
+            query.urgency = urgency;
+        }
+
+        
+        const result = await bloodRequestsCollection.find(query).toArray();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: "Error filtering requests" });
+    }
+});
 
     // ========================
     app.get('/donations', async (req, res) => {
@@ -97,10 +120,18 @@ app.get('/total-funding', verifyToken, async (req, res) => {
 
     // ==========================
     
-    app.get('/my-requests', verifyToken, async (req, res) => {
-    
-    const result = await bloodRequestsCollection.find({ requesterEmail: req.user.email }).toArray();
-    res.json(result);
+app.get('/my-requests', verifyToken, async (req, res) => {
+    try {
+        
+        const email = req.user.email; 
+        
+        
+        const result = await bloodRequestsCollection.find({ requesterEmail: email }).toArray();
+        
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching data" });
+    }
 });
 
     app.post('/create-request', verifyToken, async (req, res) => {
