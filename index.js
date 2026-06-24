@@ -40,13 +40,13 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-// ডাটাবেস রান ফাংশন
+
 async function run() {
   try {
     await client.connect();
     const db = client.db("bloodsync");
     
-    // কালেকশনগুলো
+    // connection
     const bloodRequestsCollection = db.collection("blood-data");
     const usersCollection = db.collection("user");
     const donationsCollection = db.collection("donations");
@@ -55,7 +55,7 @@ async function run() {
 
     // --- API ROUTES ---
 
-    // রুট পাথ চেক
+    // root path
     app.get('/', (req, res) => {
         res.send('BloodSync Server is running perfectly!');
     });
@@ -65,12 +65,43 @@ async function run() {
       res.json(result);
     });
 
-    app.get('/my-requests', async (req, res) => {
-      const email = req.query.email;
-      if (!email) return res.status(400).json({ message: "Email required" });
-      const result = await bloodRequestsCollection.find({ requesterEmail: email }).toArray();
-      res.json(result);
-    });
+    // ========================
+    app.get('/donations', async (req, res) => {
+    try {
+        const result = await donationsCollection.find({}).toArray();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
+  // Dashboard-total funding
+app.get('/total-funding', verifyToken, async (req, res) => {
+    try {
+        const result = await donationsCollection.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalAmount: { $sum: { $toDouble: "$amount" } } // amount String থাকলে $toDouble ব্যবহার করুন
+                }
+            }
+        ]).toArray();
+        
+        const total = result.length > 0 ? result[0].totalAmount : 0;
+        res.json({ total });
+    } catch (error) {
+        res.status(500).json({ message: "Error calculating total funding" });
+    }
+});
+
+
+    // ==========================
+    
+    app.get('/my-requests', verifyToken, async (req, res) => {
+    
+    const result = await bloodRequestsCollection.find({ requesterEmail: req.user.email }).toArray();
+    res.json(result);
+});
 
     app.post('/create-request', verifyToken, async (req, res) => {
       const result = await bloodRequestsCollection.insertOne(req.body);
@@ -105,7 +136,7 @@ async function run() {
       res.json({ success: true, result });
     });
 
-    // সার্ভার লিসেনিং
+    // server listen
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
   } catch (error) {
@@ -114,3 +145,4 @@ async function run() {
 }
 
 run();
+// -------------
