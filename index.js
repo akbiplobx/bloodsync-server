@@ -89,6 +89,18 @@ async function run() {
 });
 
     // ========================
+    
+    app.get('/donors', async (req, res) => {
+        try {
+           
+            const result = await usersCollection.find({}).toArray();
+            res.json(result);
+        } catch (error) {
+            console.error("Error fetching donors:", error);
+            res.status(500).json({ message: "Server Error while fetching donors" });
+        }
+    });
+    // =============
     app.get('/donations', async (req, res) => {
     try {
         const result = await donationsCollection.find({}).toArray();
