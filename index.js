@@ -190,11 +190,99 @@ async function run() {
             const result = await bloodRequestsCollection.findOne({ _id: new ObjectId(id) });
             res.json(result);
         });
+// ===================
 
-        app.post('/donate', verifyToken, async (req, res) => {
-            const result = await donationsCollection.insertOne(req.body);
-            res.json({ success: true, result });
-        });
+app.patch('/blood-data/donate/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+      
+        const { donorMessage, donorEmail, donorName } = req.body;
+
+        if (!id || !ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid Blood Request ID format" });
+        }
+
+        
+        const result = await bloodRequestsCollection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+                $set: {
+                    status: "inprogress", 
+                    donorName: donorName || "Anonymous Donor",
+                    donorEmail: donorEmail || "donor@example.com",
+                    donorMessage: donorMessage || "",
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, message: "Blood request not found" });
+        }
+
+        res.json({ success: true, message: "Blood data updated to inprogress successfully! 🎉" });
+
+    } catch (error) {
+        console.error("Error in blood-data donate:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
+
+
+app.get('/api/my-donations', async (req, res) => {
+    try {
+        const { email } = req.query;
+        if (!email) {
+            return res.status(400).json({ message: "Email parameter is required" });
+        }
+        
+        
+        const result = await bloodRequestsCollection.find({ donorEmail: email }).toArray();
+        res.json(result);
+    } catch (error) {
+        console.error("Error fetching donations:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+// ===================
+        
+app.put('/api/public/donate/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { donorMessage, donorEmail, donorName } = req.body;
+
+        if (!id || !ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid ID format" });
+        }
+
+        if (!donorEmail) {
+            return res.status(400).json({ success: false, message: "Donor email is required" });
+        }
+
+        const result = await client.db("bloodsync").collection("blood-data").updateOne(
+            { _id: new ObjectId(id) },
+            {
+                $set: {
+                    status: "inprogress",
+                    donorName: donorName || "Anonymous Donor",
+                    donorEmail: donorEmail,
+                    donorMessage: donorMessage || "",
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, message: "Blood request not found" });
+        }
+
+        res.json({ success: true, message: "Blood data updated to inprogress successfully! 🎉" });
+
+    } catch (error) {
+        console.error("Error in public donate API:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
 
         // server listen
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
