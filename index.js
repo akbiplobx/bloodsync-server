@@ -191,7 +191,21 @@ async function run() {
             res.json(result);
         });
 // ===================
-
+app.patch('/admin/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body; // e.g. { role: "admin" } or { status: "BLOCKED" }
+        
+        const result = await client.db("bloodsync").collection("users").updateOne(
+            { _id: new ObjectId(id) },
+            { $set: updates }
+        );
+        res.json({ success: true, message: "User updated!" });
+    } catch (error) {
+        res.status(500).json({ message: "Server error" });
+    }
+});
+// ============
 app.patch('/blood-data/donate/:id', async (req, res) => {
     try {
         const id = req.params.id;
