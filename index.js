@@ -9,6 +9,9 @@ const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 
 dotenv.config();
 
+// 💳 Stripe 
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -39,7 +42,6 @@ const verifyToken = async (req, res, next) => {
         res.status(403).json({ message: "Forbidden" });
     }
 };
-
 
 async function run() {
     try {
@@ -80,14 +82,13 @@ async function run() {
                     query.urgency = urgency;
                 }
 
-
                 const result = await bloodRequestsCollection.find(query).toArray();
                 res.json(result);
             } catch (error) {
                 res.status(500).json({ message: "Error filtering requests" });
             }
         });
-        // ====================
+
         // 🩸 Get Single Donor/User Details by ID 
         app.get('/api/users/:id', async (req, res) => {
             try {
@@ -105,11 +106,9 @@ async function run() {
                 res.status(500).json({ message: "Internal Server Error" });
             }
         });
-        // ========================
 
         app.get('/donors', async (req, res) => {
             try {
-
                 const result = await usersCollection.find({}).toArray();
                 res.json(result);
             } catch (error) {
@@ -117,7 +116,7 @@ async function run() {
                 res.status(500).json({ message: "Server Error while fetching donors" });
             }
         });
-        // =============
+
         app.get('/donations', async (req, res) => {
             try {
                 const result = await donationsCollection.find({}).toArray();
@@ -134,7 +133,7 @@ async function run() {
                     {
                         $group: {
                             _id: null,
-                            totalAmount: { $sum: { $toDouble: "$amount" } } // amount String থাকলে $toDouble ব্যবহার করুন
+                            totalAmount: { $sum: { $toDouble: "$amount" } }
                         }
                     }
                 ]).toArray();
@@ -146,17 +145,10 @@ async function run() {
             }
         });
 
-
-        // ==========================
-
         app.get('/my-requests', verifyToken, async (req, res) => {
             try {
-
                 const email = req.user.email;
-
-
                 const result = await bloodRequestsCollection.find({ requesterEmail: email }).toArray();
-
                 res.json(result);
             } catch (error) {
                 res.status(500).json({ message: "Error fetching data" });
@@ -190,113 +182,179 @@ async function run() {
             const result = await bloodRequestsCollection.findOne({ _id: new ObjectId(id) });
             res.json(result);
         });
-// ===================
-app.patch('/admin/users/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updates = req.body; // e.g. { role: "admin" } or { status: "BLOCKED" }
-        
-        const result = await client.db("bloodsync").collection("users").updateOne(
-            { _id: new ObjectId(id) },
-            { $set: updates }
-        );
-        res.json({ success: true, message: "User updated!" });
-    } catch (error) {
-        res.status(500).json({ message: "Server error" });
-    }
-});
-// ============
-app.patch('/blood-data/donate/:id', async (req, res) => {
-    try {
-        const id = req.params.id;
-      
-        const { donorMessage, donorEmail, donorName } = req.body;
 
-        if (!id || !ObjectId.isValid(id)) {
-            return res.status(400).json({ success: false, message: "Invalid Blood Request ID format" });
-        }
-
-        
-        const result = await bloodRequestsCollection.updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $set: {
-                    status: "inprogress", 
-                    donorName: donorName || "Anonymous Donor",
-                    donorEmail: donorEmail || "donor@example.com",
-                    donorMessage: donorMessage || "",
-                    updatedAt: new Date()
-                }
+        app.patch('/admin/users/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+                const updates = req.body;
+                
+                const result = await client.db("bloodsync").collection("users").updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: updates }
+                );
+                res.json({ success: true, message: "User updated!" });
+            } catch (error) {
+                res.status(500).json({ message: "Server error" });
             }
-        );
+        });
 
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ success: false, message: "Blood request not found" });
-        }
+        app.patch('/blood-data/donate/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { donorMessage, donorEmail, donorName } = req.body;
 
-        res.json({ success: true, message: "Blood data updated to inprogress successfully! 🎉" });
-
-    } catch (error) {
-        console.error("Error in blood-data donate:", error);
-        res.status(500).json({ success: false, message: "Internal Server Error" });
-    }
-});
-
-
-app.get('/api/my-donations', async (req, res) => {
-    try {
-        const { email } = req.query;
-        if (!email) {
-            return res.status(400).json({ message: "Email parameter is required" });
-        }
-        
-        
-        const result = await bloodRequestsCollection.find({ donorEmail: email }).toArray();
-        res.json(result);
-    } catch (error) {
-        console.error("Error fetching donations:", error);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
-});
-// ===================
-        
-app.put('/api/public/donate/:id', async (req, res) => {
-    try {
-        const id = req.params.id;
-        const { donorMessage, donorEmail, donorName } = req.body;
-
-        if (!id || !ObjectId.isValid(id)) {
-            return res.status(400).json({ success: false, message: "Invalid ID format" });
-        }
-
-        if (!donorEmail) {
-            return res.status(400).json({ success: false, message: "Donor email is required" });
-        }
-
-        const result = await client.db("bloodsync").collection("blood-data").updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $set: {
-                    status: "inprogress",
-                    donorName: donorName || "Anonymous Donor",
-                    donorEmail: donorEmail,
-                    donorMessage: donorMessage || "",
-                    updatedAt: new Date()
+                if (!id || !ObjectId.isValid(id)) {
+                    return res.status(400).json({ success: false, message: "Invalid Blood Request ID format" });
                 }
+
+                const result = await bloodRequestsCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            status: "inprogress", 
+                            donorName: donorName || "Anonymous Donor",
+                            donorEmail: donorEmail || "donor@example.com",
+                            donorMessage: donorMessage || "",
+                            updatedAt: new Date()
+                        }
+                    }
+                );
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).json({ success: false, message: "Blood request not found" });
+                }
+
+                res.json({ success: true, message: "Blood data updated to inprogress successfully! 🎉" });
+            } catch (error) {
+                console.error("Error in blood-data donate:", error);
+                res.status(500).json({ success: false, message: "Internal Server Error" });
             }
-        );
+        });
 
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ success: false, message: "Blood request not found" });
-        }
+        app.get('/api/my-donations', async (req, res) => {
+            try {
+                const { email } = req.query;
+                if (!email) {
+                    return res.status(400).json({ message: "Email parameter is required" });
+                }
+                const result = await bloodRequestsCollection.find({ donorEmail: email }).toArray();
+                res.json(result);
+            } catch (error) {
+                console.error("Error fetching donations:", error);
+                res.status(500).json({ message: "Internal Server Error" });
+            }
+        });
+                
+        app.put('/api/public/donate/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { donorMessage, donorEmail, donorName } = req.body;
 
-        res.json({ success: true, message: "Blood data updated to inprogress successfully! 🎉" });
+                if (!id || !ObjectId.isValid(id)) {
+                    return res.status(400).json({ success: false, message: "Invalid ID format" });
+                }
 
-    } catch (error) {
-        console.error("Error in public donate API:", error);
-        res.status(500).json({ success: false, message: "Internal Server Error" });
-    }
-});
+                if (!donorEmail) {
+                    return res.status(400).json({ success: false, message: "Donor email is required" });
+                }
+
+                const result = await client.db("bloodsync").collection("blood-data").updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            status: "inprogress",
+                            donorName: donorName || "Anonymous Donor",
+                            donorEmail: donorEmail,
+                            donorMessage: donorMessage || "",
+                            updatedAt: new Date()
+                        }
+                    }
+                );
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).json({ success: false, message: "Blood request not found" });
+                }
+
+                res.json({ success: true, message: "Blood data updated to inprogress successfully! 🎉" });
+            } catch (error) {
+                console.error("Error in public donate API:", error);
+                res.status(500).json({ success: false, message: "Internal Server Error" });
+            }
+        });
+
+        // ================= STRIPE NEW ROUTES =======================
+
+        app.post('/api/create-checkout-session', async (req, res) => {
+            try {
+                const { amount, funderName } = req.body;
+
+                if (!amount || amount <= 0) {
+                    return res.status(400).json({ error: "Invalid amount" });
+                }
+
+                const session = await stripe.checkout.sessions.create({
+                    payment_method_types: ['card'],
+                    line_items: [
+                        {
+                            price_data: {
+                                currency: 'usd', 
+                                product_data: {
+                                    name: 'Organization Funding',
+                                },
+                                unit_amount: Math.round(amount * 100),
+                            },
+                            quantity: 1,
+                        },
+                    ],
+                    mode: 'payment',
+                    success_url: `${process.env.CLIENT_URL || 'http://localhost:3000'}/success?session_id={CHECKOUT_SESSION_ID}`,
+                    cancel_url: `${process.env.CLIENT_URL || 'http://localhost:3000'}/funding`,
+                    metadata: {
+                        funderName: funderName || "Anonymous",
+                        amount: amount.toString()
+                    }
+                });
+
+                res.json({ id: session.id, url: session.url });
+            } catch (error) {
+                console.error("Stripe Session Error:", error);
+                res.status(500).json({ error: "Failed to create checkout session" });
+            }
+        });
+
+        app.post('/api/save-donation', async (req, res) => {
+            try {
+                const { sessionId } = req.body;
+                if (!sessionId) {
+                    return res.status(400).json({ success: false, message: "Session ID is required" });
+                }
+
+                const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+                if (session.payment_status === 'paid') {
+                    const isExist = await donationsCollection.findOne({ transactionId: session.id });
+                    if (isExist) {
+                        return res.json({ success: true, message: "Donation already saved!" });
+                    }
+
+                    const newDonation = {
+                        funderName: session.customer_details?.name || session.metadata?.funderName || "Anonymous", 
+                        transactionId: session.id,
+                        amount: session.amount_total / 100,
+                        fundingDate: new Date().toISOString()
+                    };
+
+                    await donationsCollection.insertOne(newDonation);
+                    return res.json({ success: true, message: "Payment recorded in MongoDB successfully!" });
+                }
+                res.status(400).json({ success: false, message: "Payment not completed" });
+            } catch (error) {
+                console.error("Error saving donation:", error);
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ===========================================================
 
         // server listen
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
@@ -307,4 +365,4 @@ app.put('/api/public/donate/:id', async (req, res) => {
 }
 
 run();
-// -------------
+// -----------------
