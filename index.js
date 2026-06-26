@@ -62,33 +62,66 @@ async function run() {
             res.send('BloodSync Server is running perfectly!');
         });
 
-        app.get('/blood-requests', async (req, res) => {
-            try {
-                const { search, bloodGroup, urgency } = req.query;
-                let query = {};
+        // app.get('/blood-requests', async (req, res) => {
+        //     try {
+        //         const { search, bloodGroup, urgency } = req.query;
+        //         let query = {};
 
-                if (search) {
-                    query.$or = [
-                        { hospitalName: { $regex: search, $options: 'i' } },
-                        { location: { $regex: search, $options: 'i' } }
-                    ];
-                }
+        //         if (search) {
+        //             query.$or = [
+        //                 { hospitalName: { $regex: search, $options: 'i' } },
+        //                 { location: { $regex: search, $options: 'i' } }
+        //             ];
+        //         }
 
-                if (bloodGroup && bloodGroup !== "All Groups") {
-                    query.bloodGroup = bloodGroup;
-                }
+        //         if (bloodGroup && bloodGroup !== "All Groups") {
+        //             query.bloodGroup = bloodGroup;
+        //         }
 
-                if (urgency && urgency !== "all") {
-                    query.urgency = urgency;
-                }
+        //         if (urgency && urgency !== "all") {
+        //             query.urgency = urgency;
+        //         }
 
-                const result = await bloodRequestsCollection.find(query).toArray();
-                res.json(result);
-            } catch (error) {
-                res.status(500).json({ message: "Error filtering requests" });
-            }
-        });
+        //         const result = await bloodRequestsCollection.find(query).toArray();
+        //         res.json(result);
+        //     } catch (error) {
+        //         res.status(500).json({ message: "Error filtering requests" });
+        //     }
+        // });
+// ===============================
+app.get('/blood-requests', async (req, res) => {
+    try {
+        const { search, bloodGroup, urgency, page = 1, limit = 8 } = req.query;
+        let query = {};
 
+        if (search) {
+            query.$or = [
+                { hospitalName: { $regex: search, $options: 'i' } },
+                { location: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        if (bloodGroup && bloodGroup !== "All Groups") {
+            query.bloodGroup = bloodGroup;
+        }
+
+        if (urgency && urgency !== "all") {
+            query.urgency = urgency;
+        }
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        const total = await bloodRequestsCollection.countDocuments(query);
+        const requests = await bloodRequestsCollection.find(query).skip(skip).limit(limitNum).toArray();
+
+        res.json({ requests, total });
+    } catch (error) {
+        res.status(500).json({ message: "Error filtering requests" });
+    }
+});
+// ================================
         // 🩸 Get Single Donor/User Details by ID 
         app.get('/api/users/:id', async (req, res) => {
             try {
